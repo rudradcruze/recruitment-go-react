@@ -30,6 +30,16 @@ The backend is Go with Gin and Domain-Driven Design (DDD). The frontend is React
 └── .env.example
 ```
 
+## Bounded contexts
+
+| Context | Contents |
+| --- | --- |
+| `admin` | The Admin, the login, the session in Redis and the guard for the Admin routes. |
+| `exam` | The Question bank, the Exams, the Attempts, the Answers and the Score. |
+
+- `bootstrap` gives the guard of `admin` to the Admin routes of `exam`, as a Gin handler. `exam` does not import `admin`.
+- A Candidate has no context of its own. A Candidate exists only as the name and the email address of an Attempt.
+
 ## Bounded context layers
 
 Each bounded context in `backend/internal/<context>/` has the same folders:
@@ -57,6 +67,8 @@ Each bounded context in `backend/internal/<context>/` has the same folders:
 
 ## Background jobs
 
+The application has no background task now. The worker starts, checks Redis and has no handler. Add a handler in `bootstrap.NewWorkerMux` when a task is needed.
+
 - Asynq runs the jobs. The queue uses Redis DB 1.
 - Task type names have the form `<context>:<action>`, for example `user:send_welcome_email`.
 - Task payloads are JSON.
@@ -75,6 +87,7 @@ Each bounded context in `backend/internal/<context>/` has the same folders:
 
 - `internal/platform/config` reads all environment variables into one typed struct with `caarlos0/env`.
 - The config checks all values at startup. An incorrect value stops the process with a clear error.
+- `ADMIN_EMAIL` and `ADMIN_PASSWORD` are settings of the `migrate` command only. After `migrate up`, the command makes the first Admin, and it stops with a clear error when a value is not valid.
 
 ## Ports
 

@@ -348,3 +348,23 @@ func TestConfig_LoadMigrate_ReadsTheEnvironmentOfTheProcess(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "/from-process", cfg.Dir)
 }
+
+func TestConfig_LoadMigrateFrom_ReadsTheSettingsOfTheFirstAdmin(t *testing.T) {
+	t.Parallel()
+
+	cfg, err := config.LoadMigrateFrom(map[string]string{"ADMIN_EMAIL": "owner@example.com", "ADMIN_PASSWORD": "a password of 12+"})
+
+	require.NoError(t, err)
+	assert.Equal(t, "owner@example.com", cfg.AdminEmail)
+	assert.Equal(t, "a password of 12+", cfg.AdminPassword)
+}
+
+func TestConfig_LoadMigrateFrom_LeavesTheSettingsOfTheFirstAdminEmptyByDefault(t *testing.T) {
+	t.Parallel()
+
+	cfg, err := config.LoadMigrateFrom(map[string]string{})
+
+	require.NoError(t, err)
+	assert.Empty(t, cfg.AdminEmail)
+	assert.Empty(t, cfg.AdminPassword)
+}

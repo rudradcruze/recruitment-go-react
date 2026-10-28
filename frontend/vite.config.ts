@@ -27,6 +27,8 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react(), tailwindcss()],
+    // The settings VITE_* of the page come from the .env file in the root of the repo too.
+    envDir: resolve(import.meta.dirname, ".."),
     server: {
       port: readPort(env, "WEB_PORT", 5651),
       strictPort: true,

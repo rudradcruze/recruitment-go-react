@@ -2,6 +2,8 @@
 //
 // Use: migrate up|down
 // The settings come from environment variables: the POSTGRES_ variables, MIGRATIONS_DIR and LOG_LEVEL.
+// After "up", the command makes the first Admin from ADMIN_EMAIL and ADMIN_PASSWORD. It does nothing
+// when an Admin with this email address exists.
 package main
 
 import (
@@ -12,6 +14,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/rudradcruze/go-react-template/backend/internal/bootstrap"
 	"github.com/rudradcruze/go-react-template/backend/internal/platform/config"
 	"github.com/rudradcruze/go-react-template/backend/internal/platform/database"
 	"github.com/rudradcruze/go-react-template/backend/internal/platform/logger"
@@ -61,5 +64,16 @@ func run(args []string) error {
 		return err
 	}
 	log.Info("The migration command is complete.", slog.String("command", command), slog.String("folder", cfg.Dir))
+	if command != "up" {
+		return nil
+	}
+
+	created, err := bootstrap.NewSeedAdmin(db).Execute(ctx, cfg.AdminEmail, cfg.AdminPassword)
+	if err != nil {
+		log.Error("The first Admin cannot be made. Set ADMIN_EMAIL to a valid email address, "+
+			"and ADMIN_PASSWORD to a password of 12 to 72 bytes.", slog.Any("error", err))
+		return err
+	}
+	log.Info("The Admin check is complete.", slog.Bool("created", created))
 	return nil
 }

@@ -8,6 +8,11 @@ COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY frontend/package.json frontend/
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile
 COPY frontend frontend
+# The demo Admin of the login page. Vite puts these values in the files of the page, so they are public.
+# Leave them empty in deployment, and the page shows no demo Admin.
+ARG VITE_DEMO_ADMIN_EMAIL=
+ARG VITE_DEMO_ADMIN_PASSWORD=
+ENV VITE_DEMO_ADMIN_EMAIL=$VITE_DEMO_ADMIN_EMAIL VITE_DEMO_ADMIN_PASSWORD=$VITE_DEMO_ADMIN_PASSWORD
 RUN pnpm --filter frontend run build
 
 # nginx serves the frontend, and sends /api, /docs and /openapi.yaml to the API.

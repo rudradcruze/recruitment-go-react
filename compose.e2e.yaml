@@ -8,3 +8,8 @@ name: go-react-template-e2e
 services:
   api:
     ports: !reset []
+  # The browser tests log in as this Admin. These values are not secret.
+  migrate:
+    environment:
+      ADMIN_EMAIL: admin@example.com
+      ADMIN_PASSWORD: e2e-admin-password

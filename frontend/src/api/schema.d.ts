@@ -4,27 +4,87 @@
  */
 
 export interface paths {
-    "/users": {
+    "/admin/session": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * Get the Admin of the session
+         * @description Gives the Admin that the session cookie belongs to.
+         */
+        get: operations["getSession"];
         put?: never;
         /**
-         * Register a User
-         * @description Creates a User from an email address and a display name. The API removes the spaces around the email address and changes it to lowercase. Two email addresses that are different only in letter case are the same address. The request body is one JSON object with only the fields below. The content type is application/json.
+         * Log in as an Admin
+         * @description Starts a session for the Admin with this email address and password. The API removes the spaces around the email address and changes it to lowercase. The response sets the HttpOnly cookie "session". It lives for 8 hours. After 5 failed logins for one email address in 15 minutes, the API refuses all logins for that address until the 15 minutes end, also with the correct password. The request body is one JSON object with only the fields below. The content type is application/json.
          */
-        post: operations["registerUser"];
+        post: operations["login"];
+        /**
+         * Log out
+         * @description Ends the session. The response removes the session cookie.
+         */
+        delete: operations["logout"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/questions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the Questions
+         * @description Gives all Questions in the Question bank, newest first. There is no pagination.
+         */
+        get: operations["listQuestions"];
+        put?: never;
+        /**
+         * Create a Question
+         * @description Adds a Question to the Question bank. The Question has 2 to 6 Options, and exactly one Option is correct. The API removes the spaces around the text of the Question and of each Option. The request body is one JSON object with only the fields below. The content type is application/json.
+         */
+        post: operations["createQuestion"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/users/{id}": {
+    "/admin/questions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the Question, a UUID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** Get a Question */
+        get: operations["getQuestion"];
+        /**
+         * Change a Question
+         * @description Replaces the text and all Options of the Question. The Options get new IDs. After an Attempt uses the Question, the Question cannot change. The API then returns 409. The request body is one JSON object with only the fields below. The content type is application/json.
+         */
+        put: operations["updateQuestion"];
+        post?: never;
+        /**
+         * Delete a Question
+         * @description An Exam that uses the Question stops the delete.
+         */
+        delete: operations["deleteQuestion"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/exams": {
         parameters: {
             query?: never;
             header?: never;
@@ -32,10 +92,205 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get a User
-         * @description Gives the User with this ID. The API keeps each User in a cache for 5 minutes. A change to the User in the database can need up to 5 minutes to show here.
+         * List the Exams
+         * @description Gives all Exams, newest first. There is no pagination.
          */
-        get: operations["getUser"];
+        get: operations["listExams"];
+        put?: never;
+        /**
+         * Create an Exam
+         * @description Makes an Exam from Questions of the Question bank. The response has the Exam link token. The Exam link is /e/{token} on the address of the web application. The request body is one JSON object with only the fields below. The content type is application/json.
+         */
+        post: operations["createExam"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/exams/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the Exam, a UUID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** Get an Exam */
+        get: operations["getExam"];
+        /**
+         * Change an Exam
+         * @description Replaces all fields of the Exam, except the Exam link token. After the first Attempt, only the close time can change. A change of another field returns 409. The request body is one JSON object with only the fields below. The content type is application/json.
+         */
+        put: operations["updateExam"];
+        post?: never;
+        /**
+         * Delete an Exam
+         * @description After the first Attempt, the Exam cannot be deleted.
+         */
+        delete: operations["deleteExam"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/exams/{id}/exam-link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the Exam, a UUID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Regenerate the Exam link
+         * @description Makes a new Exam link token. The old Exam link stops working.
+         */
+        post: operations["regenerateExamLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/exam-links/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The token of the Exam link. */
+                token: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * Get the Exam of an Exam link
+         * @description Gives the title, the Exam window and the Time limit of the Exam. It does not give the Questions.
+         */
+        get: operations["getExamLink"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/exam-links/{token}/attempts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The token of the Exam link. */
+                token: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start or resume an Attempt
+         * @description Starts an Attempt for a Candidate. The API removes the spaces around the name and the email address, and changes the email address to lowercase. An email address with an open Attempt gets that Attempt with status 200, in the Exam window or after it. An email address with a submitted or timed-out Attempt gets 409, and the API gives no Score. A new Attempt needs the Exam window: before it, the API returns 409 with "not open yet", and after it, 409 with "closed". The request body is one JSON object with only the fields below. The content type is application/json.
+         */
+        post: operations["startAttempt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/attempts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the Attempt, a UUID. It is a secret of the Candidate. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * Get an Attempt
+         * @description Gives an open Attempt with its Questions and its saved Answers. For a submitted or timed-out Attempt, it gives only the status.
+         */
+        get: operations["getAttempt"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/attempts/{id}/answers/{questionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the Attempt, a UUID. It is a secret of the Candidate. */
+                id: string;
+                /** @description The ID of a Question of the Exam, a UUID. */
+                questionId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Save an Answer
+         * @description Saves the Option that the Candidate selected for the Question. A second call for the same Question replaces the Answer. After the Time limit ends, or after the Candidate submits, the API returns 409. The request body is one JSON object with only the fields below. The content type is application/json.
+         */
+        put: operations["saveAnswer"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/attempts/{id}/submission": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the Attempt, a UUID. It is a secret of the Candidate. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit an Attempt
+         * @description Ends the Attempt and gives the Score. A Question with no Answer counts 0 points. The call also works after the Time limit ends, because the Answers cannot change after that time. The Attempt then has the status "timed_out". A second call returns 409.
+         */
+        post: operations["submitAttempt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/exams/{id}/attempts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the Exam, a UUID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * List the Attempts of an Exam
+         * @description Gives one row for each Attempt, in the order of the start time. There is no pagination. The rows have no Attempt ID, because the Attempt ID is the secret of the Candidate.
+         */
+        get: operations["listExamAttempts"];
         put?: never;
         post?: never;
         delete?: never;
@@ -48,33 +303,206 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        RegisterUserRequest: {
+        LoginRequest: {
             /**
-             * @description The email address of the User, for example name@example.com. It has only ASCII characters, and the maximum length is 254 characters.
-             * @example ann@example.com
+             * @description The email address of the Admin.
+             * @example admin@example.com
              */
             emailAddress: string;
-            /**
-             * @description The name that the application shows for the User. The maximum length is 100 characters.
-             * @example Ann
-             */
-            displayName: string;
+            /** @description The password of the Admin. */
+            password: string;
         };
-        User: {
+        OptionRequest: {
+            /** @description The text of the Option, plain text of 1 to 500 characters. */
+            text: string;
+            /** @description True for the one correct Option of the Question. */
+            correct: boolean;
+        };
+        QuestionRequest: {
+            /** @description The text of the Question, plain text of 1 to 2000 characters. */
+            text: string;
+            /** @description The Options in the order that the Question shows them. A Question has 2 to 6 Options. */
+            options: components["schemas"]["OptionRequest"][];
+        };
+        Option: {
             /**
              * Format: uuid
-             * @description The ID of the User. It is a UUID of version 7.
+             * @description The ID of the Option. It is a UUID of version 7.
              */
             id: string;
-            /** @description The email address of the User, in lowercase. */
-            emailAddress: string;
-            /** @description The name that the application shows for the User. */
-            displayName: string;
+            text: string;
+            correct: boolean;
+        };
+        Question: {
+            /**
+             * Format: uuid
+             * @description The ID of the Question. It is a UUID of version 7.
+             */
+            id: string;
+            text: string;
+            /** @description The Options in the order that the Question shows them. */
+            options: components["schemas"]["Option"][];
             /**
              * Format: date-time
-             * @description The time of the Registration, in UTC.
+             * @description The time that the Admin created the Question, in UTC.
              */
             createdAt: string;
+        };
+        ExamRequest: {
+            /** @description The title of the Exam, plain text of 1 to 200 characters. */
+            title: string;
+            /** @description The IDs of the Questions in the order that the Exam shows them. An Exam has 1 to 200 different Questions. */
+            questionIds: string[];
+            /**
+             * Format: date-time
+             * @description The open time of the Exam window. A Candidate cannot start an Attempt before it.
+             */
+            opensAt: string;
+            /**
+             * Format: date-time
+             * @description The close time of the Exam window. It is after the open time.
+             */
+            closesAt: string;
+            /** @description The number of minutes that a Candidate has to finish an Attempt, from 1 to 480. */
+            timeLimitMinutes: number;
+        };
+        Exam: {
+            /**
+             * Format: uuid
+             * @description The ID of the Exam. It is a UUID of version 7.
+             */
+            id: string;
+            title: string;
+            questionIds: string[];
+            /**
+             * Format: date-time
+             * @description The open time of the Exam window, in UTC.
+             */
+            opensAt: string;
+            /**
+             * Format: date-time
+             * @description The close time of the Exam window, in UTC.
+             */
+            closesAt: string;
+            timeLimitMinutes: number;
+            /** @description The token in the Exam link. It has 22 random letters and digits. */
+            linkToken: string;
+            /**
+             * Format: date-time
+             * @description The time that the Admin created the Exam, in UTC.
+             */
+            createdAt: string;
+        };
+        ExamSummary: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            /** Format: date-time */
+            opensAt: string;
+            /** Format: date-time */
+            closesAt: string;
+            timeLimitMinutes: number;
+            questionCount: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ExamLink: {
+            title: string;
+            /**
+             * Format: date-time
+             * @description The open time of the Exam window, in UTC.
+             */
+            opensAt: string;
+            /**
+             * Format: date-time
+             * @description The close time of the Exam window, in UTC.
+             */
+            closesAt: string;
+            timeLimitMinutes: number;
+            questionCount: number;
+        };
+        StartAttemptRequest: {
+            /** @description The name of the Candidate, plain text of 1 to 100 characters. */
+            name: string;
+            /** @description The email address of the Candidate. It has up to 254 characters. */
+            emailAddress: string;
+        };
+        CandidateOption: {
+            /** Format: uuid */
+            id: string;
+            text: string;
+        };
+        /** @description A Question as a Candidate sees it. It does not say which Option is correct. */
+        CandidateQuestion: {
+            /** Format: uuid */
+            id: string;
+            text: string;
+            options: components["schemas"]["CandidateOption"][];
+        };
+        Answer: {
+            /** Format: uuid */
+            questionId: string;
+            /** Format: uuid */
+            optionId: string;
+        };
+        /** @description An Attempt. An open Attempt has all fields. A submitted or timed-out Attempt has only id and status. */
+        Attempt: {
+            /**
+             * Format: uuid
+             * @description The ID of the Attempt. It is a random UUID, and it is the secret of the Candidate.
+             */
+            id: string;
+            /** @enum {string} */
+            status: "open" | "submitted" | "timed_out";
+            examTitle?: string;
+            /**
+             * Format: date-time
+             * @description The time that the Time limit ends, in UTC.
+             */
+            expiresAt?: string;
+            /** @description The Questions in the order that the Exam shows them. */
+            questions?: components["schemas"]["CandidateQuestion"][];
+            /** @description The Answers that the API saved. */
+            answers?: components["schemas"]["Answer"][];
+        };
+        SaveAnswerRequest: {
+            /**
+             * Format: uuid
+             * @description The ID of an Option of the Question.
+             */
+            optionId: string;
+        };
+        Score: {
+            /** @description The number of Questions that the Candidate answered with the correct Option. Each one is 1 point. */
+            correct: number;
+            /** @description The number of Questions in the Exam. */
+            total: number;
+        };
+        AttemptResult: {
+            /** @description The name of the Candidate. */
+            name: string;
+            /** @description The email address of the Candidate, in lowercase. */
+            emailAddress: string;
+            /** @enum {string} */
+            status: "open" | "submitted" | "timed_out";
+            /** @description The Score of the Attempt. It counts the saved Answers. It is null while the Attempt is open. */
+            score: components["schemas"]["Score"] | null;
+            /**
+             * Format: date-time
+             * @description The time that the Candidate started the Attempt, in UTC.
+             */
+            startedAt: string;
+            /** @description The submit time, in UTC. For a timed-out Attempt that the Candidate did not submit, it is the time that the Time limit ended. It is null while the Attempt is open. */
+            finishedAt: string | null;
+        };
+        Admin: {
+            /**
+             * Format: uuid
+             * @description The ID of the Admin. It is a UUID of version 7.
+             */
+            id: string;
+            /** @description The email address of the Admin, in lowercase. */
+            emailAddress: string;
         };
         /** @description A problem detail, as RFC 9457 defines it. */
         Problem: {
@@ -89,6 +517,15 @@ export interface components {
         };
     };
     responses: {
+        /** @description There is no session, the session is not valid, or the email address or the password is not correct. */
+        Unauthorized: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
         /** @description A value in the address of the request is not valid, for example an ID that is not a UUID. */
         InvalidParameter: {
             headers: {
@@ -116,7 +553,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["Problem"];
             };
         };
-        /** @description The request conflicts with the data of the application, for example an email address that is already registered. */
+        /** @description The request conflicts with the data of the application, for example a Question that an Exam uses. */
         Conflict: {
             headers: {
                 [name: string]: unknown;
@@ -143,7 +580,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["Problem"];
             };
         };
-        /** @description A rule of the application rejects the request, for example an email address that is not valid. */
+        /** @description A rule of the application rejects the request, for example a value that is too long. */
         UnprocessableContent: {
             headers: {
                 [name: string]: unknown;
@@ -169,7 +606,29 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    registerUser: {
+    getSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The Admin. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Admin"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    login: {
         parameters: {
             query?: never;
             header?: never;
@@ -178,20 +637,164 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["RegisterUserRequest"];
+                "application/json": components["schemas"]["LoginRequest"];
             };
         };
         responses: {
-            /** @description The User is registered. */
+            /** @description The session starts. */
+            204: {
+                headers: {
+                    /** @description The cookie "session", with the HttpOnly and SameSite=Lax attributes and a life of 8 hours. */
+                    "Set-Cookie"?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            413: components["responses"]["PayloadTooLarge"];
+            415: components["responses"]["UnsupportedMediaType"];
+            /** @description There were too many failed logins for this email address. */
+            429: {
+                headers: {
+                    /** @description The number of seconds until the API accepts a login again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    logout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The session is ended. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    listQuestions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The Questions. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Question"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    createQuestion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuestionRequest"];
+            };
+        };
+        responses: {
+            /** @description The Question is created. */
             201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["User"];
+                    "application/json": components["schemas"]["Question"];
                 };
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            413: components["responses"]["PayloadTooLarge"];
+            415: components["responses"]["UnsupportedMediaType"];
+            422: components["responses"]["UnprocessableContent"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    getQuestion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the Question, a UUID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The Question. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Question"];
+                };
+            };
+            400: components["responses"]["InvalidParameter"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    updateQuestion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the Question, a UUID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuestionRequest"];
+            };
+        };
+        responses: {
+            /** @description The Question after the change. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Question"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
             413: components["responses"]["PayloadTooLarge"];
             415: components["responses"]["UnsupportedMediaType"];
@@ -199,28 +802,377 @@ export interface operations {
             500: components["responses"]["InternalServerError"];
         };
     };
-    getUser: {
+    deleteQuestion: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /** @description The ID of the User, a UUID. */
+                /** @description The ID of the Question, a UUID. */
                 id: string;
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description The User. */
+            /** @description The Question is deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["InvalidParameter"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    listExams: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The Exams. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["User"];
+                    "application/json": components["schemas"]["ExamSummary"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    createExam: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExamRequest"];
+            };
+        };
+        responses: {
+            /** @description The Exam is created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Exam"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            413: components["responses"]["PayloadTooLarge"];
+            415: components["responses"]["UnsupportedMediaType"];
+            422: components["responses"]["UnprocessableContent"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    getExam: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the Exam, a UUID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The Exam. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Exam"];
                 };
             };
             400: components["responses"]["InvalidParameter"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    updateExam: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the Exam, a UUID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExamRequest"];
+            };
+        };
+        responses: {
+            /** @description The Exam after the change. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Exam"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            413: components["responses"]["PayloadTooLarge"];
+            415: components["responses"]["UnsupportedMediaType"];
+            422: components["responses"]["UnprocessableContent"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    deleteExam: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the Exam, a UUID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The Exam is deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["InvalidParameter"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    regenerateExamLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the Exam, a UUID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The Exam with its new Exam link token. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Exam"];
+                };
+            };
+            400: components["responses"]["InvalidParameter"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    getExamLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The token of the Exam link. */
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The Exam of the Exam link. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExamLink"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    startAttempt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The token of the Exam link. */
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartAttemptRequest"];
+            };
+        };
+        responses: {
+            /** @description The open Attempt of this email address. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Attempt"];
+                };
+            };
+            /** @description The new Attempt. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Attempt"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            413: components["responses"]["PayloadTooLarge"];
+            415: components["responses"]["UnsupportedMediaType"];
+            422: components["responses"]["UnprocessableContent"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    getAttempt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the Attempt, a UUID. It is a secret of the Candidate. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The Attempt. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Attempt"];
+                };
+            };
+            400: components["responses"]["InvalidParameter"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    saveAnswer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the Attempt, a UUID. It is a secret of the Candidate. */
+                id: string;
+                /** @description The ID of a Question of the Exam, a UUID. */
+                questionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveAnswerRequest"];
+            };
+        };
+        responses: {
+            /** @description The Answer is saved. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            413: components["responses"]["PayloadTooLarge"];
+            415: components["responses"]["UnsupportedMediaType"];
+            422: components["responses"]["UnprocessableContent"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    submitAttempt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the Attempt, a UUID. It is a secret of the Candidate. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The Score of the Attempt. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Score"];
+                };
+            };
+            400: components["responses"]["InvalidParameter"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    listExamAttempts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the Exam, a UUID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The Attempts of the Exam. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttemptResult"][];
+                };
+            };
+            400: components["responses"]["InvalidParameter"];
+            401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
             500: components["responses"]["InternalServerError"];
         };

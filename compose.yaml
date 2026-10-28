@@ -67,7 +67,11 @@ services:
     <<: *backend
     entrypoint: ["/app/migrate"]
     command: ["up"]
-    environment: *backend-environment
+    environment:
+      <<: *backend-environment
+      # The first Admin. The command stops with an error when ADMIN_EMAIL is empty or ADMIN_PASSWORD is not valid.
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -121,6 +125,9 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile
+      args:
+        VITE_DEMO_ADMIN_EMAIL: ${VITE_DEMO_ADMIN_EMAIL:-}
+        VITE_DEMO_ADMIN_PASSWORD: ${VITE_DEMO_ADMIN_PASSWORD:-}
     pull_policy: build
     depends_on:
       api:

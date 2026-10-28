@@ -12,7 +12,7 @@ All backend tests are in `backend/api-test/`. Write each test before the code th
 
 ```text
 backend/api-test/
-├── unit/<context>/<layer>_test.go    unit tests, for example unit/user/domain_test.go and unit/user/app_test.go
+├── unit/<context>/<layer>_test.go    unit tests, for example unit/exam/domain_test.go and unit/exam/app_test.go
 ├── unit/fixtures/                    tests of the builders in fixtures/
 ├── e2e/<context>/<feature>_test.go   E2E tests
 ├── e2e/testenv/                      helpers for E2E tests: containers and one database for each test
@@ -25,7 +25,7 @@ The tests are in different packages from the code. They use only exported identi
 
 ## Conventions
 
-- Name each test `Test<Type>_<Method>_<Behaviour>`, for example `TestRegisterUser_Execute_RejectsTakenEmail`.
+- Name each test `Test<Type>_<Method>_<Behaviour>`, for example `TestCreateExam_Execute_RejectsUnknownQuestion`.
 - Test one behaviour in each test. Use a table-driven test when the cases have the same steps.
 - Use `require` for preconditions and `assert` for checks. Both come from Testify.
 - Call `t.Parallel()` in unit tests. E2E tests run one after the other.
@@ -40,9 +40,9 @@ The tests are in different packages from the code. They use only exported identi
 
 ## Fixtures
 
-- `fixtures/` has a builder for each entity, for example `fixtures.User(fixtures.WithEmailAddress("ann@example.com"))`.
-- A builder gives a valid object with default values. Each call gives unique values for unique fields, for example the email address.
-- Unit tests use the builders to make domain objects. E2E tests use the save helpers, for example `fixtures.SaveUser(t, api.Users)`, which save through the repository.
+- `fixtures/` has a builder for each entity, for example `fixtures.Question(fixtures.WithText("What is 2 + 2?"))`.
+- A builder gives a valid object with default values. Each call gives unique values for unique fields, for example the title.
+- Unit tests use the builders to make domain objects. E2E tests use the save helpers, for example `fixtures.SaveQuestion(t, api.Questions)`, which save through the repository.
 
 ## E2E isolation
 
@@ -52,5 +52,5 @@ The tests are in different packages from the code. They use only exported identi
 - `testenv.BeginEmpty(t)` makes a database without tables. Use it to test the migrations, because the template already has applied migrations.
 - `testenv.Begin` also removes all Redis data (`FLUSHALL`) before the test starts.
 - Each test sends real HTTP requests to the real Gin engine, with no mocks.
-- Start the API with `testapi.Start(t)`. It builds the real handler with `bootstrap.NewAPI`, on the database of the test. Send requests with `api.Get`, `api.PostJSON` or `api.Do`: they check each response against `backend/api/openapi.yaml` with `pb33f/libopenapi-validator`, so a test cannot skip the check. `api.DB` and `api.Redis` read the data of the test. `api.Logs()` gives the log lines of the API. `api.BreakDatabase`, `api.BreakCache` and `api.BreakQueue` make the next call to Postgres, to the cache or to the queue fail, to test an unexpected error. `api.QueueInspector` reads the job queue, `api.Enqueue` adds a task, and `api.StartWorker(t)` starts a worker on the data of the test.
+- Start the API with `testapi.Start(t)`. It builds the real handler with `bootstrap.NewAPI`, on the database of the test. Send requests with `api.Get`, `api.PostJSON` or `api.Do`: they check each response against `backend/api/openapi.yaml` with `pb33f/libopenapi-validator`, so a test cannot skip the check. `api.LogIn(t)` saves an Admin and logs in through the API, and gives the session token for `api.GetAs` and `api.JSONAs`. `api.DB` and `api.Redis` read the data of the test. `api.Logs()` gives the log lines of the API. `api.BreakDatabase`, `api.BreakCache` and `api.BreakQueue` make the next call to Postgres, to the cache or to the queue fail, to test an unexpected error. `api.QueueInspector` reads the job queue, `api.Enqueue` adds a task, and `api.StartWorker(t)` starts a worker on the data of the test.
 - When `TestMain` ends, it stops the containers. This also removes the template database.

@@ -18,7 +18,7 @@ export POSTGRES_PASSWORD
 # The settings of the stack are the defaults of compose.yaml. --env-file /dev/null skips the file .env,
 # and unset removes the settings that the shell of the developer can have.
 unset POSTGRES_USER POSTGRES_DB POSTGRES_SSLMODE REDIS_PASSWORD REDIS_CACHE_DB REDIS_QUEUE_DB \
-  API_PORT API_DOCS_ENABLED API_DOCS_AUTH_ENABLED API_DOCS_USERNAME API_DOCS_PASSWORD LOG_LEVEL WORKER_CONCURRENCY
+  ADMIN_EMAIL ADMIN_PASSWORD VITE_DEMO_ADMIN_EMAIL VITE_DEMO_ADMIN_PASSWORD API_PORT API_DOCS_ENABLED API_DOCS_AUTH_ENABLED API_DOCS_USERNAME API_DOCS_PASSWORD LOG_LEVEL WORKER_CONCURRENCY
 compose=(docker compose --env-file /dev/null -f compose.yaml -f compose.e2e.yaml)
 
 remove_project() {

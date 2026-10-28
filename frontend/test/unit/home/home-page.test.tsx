@@ -17,10 +17,4 @@ describe("the home page", () => {
 
     expect(document.title).toBe("Home - go-react-template");
   });
-
-  it("has a link to the Registration page", () => {
-    renderApp("/");
-
-    expect(screen.getByRole("link", { name: "Register" })).toHaveAttribute("href", "/register");
-  });
 });

@@ -46,6 +46,13 @@ export function unwrap<T>({
   throw new ApiError(response.status, detailOf(error) ?? fallbackMessage(response.status));
 }
 
+// unwrapEmpty is like unwrap, for a response that has no body when it succeeds, for example 204.
+export function unwrapEmpty({ error, response }: { error?: unknown; response: Response }): void {
+  if (!response.ok) {
+    throw new ApiError(response.status, detailOf(error) ?? fallbackMessage(response.status));
+  }
+}
+
 const maxRetries = 2;
 
 // shouldRetry tells TanStack Query whether it must send a failed query again.

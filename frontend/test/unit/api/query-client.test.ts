@@ -12,7 +12,7 @@ describe("createQueryClient", () => {
     expect(createQueryClient().getDefaultOptions().queries?.staleTime).toBe(30_000);
   });
 
-  it("makes a client that does not retry a mutation, so a failed Registration is not sent again", () => {
+  it("makes a client that does not retry a mutation, so a failed request is not sent again", () => {
     expect(createQueryClient().getDefaultOptions().mutations?.retry ?? 0).toBe(0);
   });
 });

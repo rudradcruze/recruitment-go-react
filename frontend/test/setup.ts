@@ -1,9 +1,13 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
-import { afterAll, afterEach } from "vite-plus/test";
+import { afterAll, afterEach, vi } from "vite-plus/test";
 
 import { server } from "./mocks/server";
 import { unhandledRequests } from "./mocks/unhandled";
+
+// The .env file of a developer can set the demo Admin. A test must not depend on it, so a test starts with no demo Admin.
+vi.stubEnv("VITE_DEMO_ADMIN_EMAIL", "");
+vi.stubEnv("VITE_DEMO_ADMIN_PASSWORD", "");
 
 // Start the mock server now, not in beforeAll. The API client keeps the fetch function that exists
 // when its module loads, so the mock server must replace fetch before a test imports the client.

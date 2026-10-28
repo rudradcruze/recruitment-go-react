@@ -34,6 +34,9 @@ type Migrate struct {
 	Logging
 	Postgres Postgres
 	Dir      string `env:"MIGRATIONS_DIR" envDefault:"migrations"`
+	// AdminEmail and AdminPassword make the first Admin after the migrations. The command checks them only for "up".
+	AdminEmail    string `env:"ADMIN_EMAIL"`
+	AdminPassword string `env:"ADMIN_PASSWORD"`
 }
 
 // Worker holds the settings of the worker. It has only the settings that the worker uses.

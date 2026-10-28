@@ -28,7 +28,7 @@ paths:
 
 - The cache uses Redis DB 0.
 - Cache keys have the form `<context>:<entity>:<id>`, for example `user:user:<id>`.
-- Give each key a TTL. The User cache uses 5 minutes.
+- Give each key a TTL. A cache of data that changes seldom can use 5 minutes.
 - Read through the cache. Read the key first. If the key is not there, read Postgres and write the key.
 - Postgres is the source of truth. If Redis fails, log the error and read from Postgres. Do not write to a cache that just failed to read.
 - A call to Redis must fail fast: the cache client has timeouts of under 1 second and no retries. A cache value that the adapter cannot read, or that is for another ID, counts as a miss.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { ApiError, messageOf, shouldRetry, unwrap } from "../../../src/api/errors";
+import { ApiError, messageOf, shouldRetry, unwrap, unwrapEmpty } from "../../../src/api/errors";
 
 describe("unwrap", () => {
   it("gives the data of a response that succeeded", () => {
@@ -21,6 +21,28 @@ describe("unwrap", () => {
 
   it("throws an ApiError for a success status that has no data", () => {
     expect(() => unwrap({ response: new Response(null, { status: 200 }) })).toThrow(ApiError);
+  });
+});
+
+describe("unwrapEmpty", () => {
+  it("gives nothing for a response that succeeded without a body", () => {
+    expect(unwrapEmpty({ response: new Response(null, { status: 204 }) })).toBeUndefined();
+  });
+
+  it("throws an ApiError with the status and the text detail of a failed response", () => {
+    const failure = () =>
+      unwrapEmpty({
+        error: { detail: "The Attempt is closed." },
+        response: new Response(null, { status: 409 }),
+      });
+
+    expect(failure).toThrow(new ApiError(409, "The Attempt is closed."));
+  });
+
+  it("throws an ApiError with a general message for a failed response without a body", () => {
+    expect(() => unwrapEmpty({ response: new Response(null, { status: 502 }) })).toThrow(
+      new ApiError(502, "The server cannot complete the request. Try again in 1 minute."),
+    );
   });
 });
 

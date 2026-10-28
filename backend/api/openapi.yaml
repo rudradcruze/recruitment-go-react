@@ -6,34 +6,198 @@ info:
 servers:
   - url: /api/v1
 tags:
-  - name: users
-    description: The Users of the application.
+  - name: admin
+    description: The Admins of the application and their sessions.
+  - name: questions
+    description: The multiple-choice Questions in the Question bank. Only an Admin can use them.
+  - name: exams
+    description: The Exams, with their Exam window, Time limit, Questions and Exam link. Only an Admin can use them.
+  - name: attempts
+    description: The routes of a Candidate. They need no login. The Exam link and the Attempt ID are the only secrets.
 paths:
-  /users:
+  /admin/session:
     post:
-      tags: [users]
-      operationId: registerUser
-      summary: Register a User
+      tags: [admin]
+      operationId: login
+      summary: Log in as an Admin
       description: >-
-        Creates a User from an email address and a display name.
+        Starts a session for the Admin with this email address and password.
         The API removes the spaces around the email address and changes it to lowercase.
-        Two email addresses that are different only in letter case are the same address.
+        The response sets the HttpOnly cookie "session". It lives for 8 hours.
+        After 5 failed logins for one email address in 15 minutes, the API refuses all logins
+        for that address until the 15 minutes end, also with the correct password.
+        The request body is one JSON object with only the fields below. The content type is application/json.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "204":
+          description: The session starts.
+          headers:
+            Set-Cookie:
+              description: The cookie "session", with the HttpOnly and SameSite=Lax attributes and a life of 8 hours.
+              schema:
+                type: string
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          description: There were too many failed logins for this email address.
+          headers:
+            Retry-After:
+              description: The number of seconds until the API accepts a login again.
+              schema:
+                type: integer
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    get:
+      tags: [admin]
+      operationId: getSession
+      summary: Get the Admin of the session
+      description: Gives the Admin that the session cookie belongs to.
+      responses:
+        "200":
+          description: The Admin.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Admin"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      tags: [admin]
+      operationId: logout
+      summary: Log out
+      description: Ends the session. The response removes the session cookie.
+      responses:
+        "204":
+          description: The session is ended.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /admin/questions:
+    post:
+      tags: [questions]
+      operationId: createQuestion
+      summary: Create a Question
+      description: >-
+        Adds a Question to the Question bank. The Question has 2 to 6 Options, and exactly one Option is correct.
+        The API removes the spaces around the text of the Question and of each Option.
         The request body is one JSON object with only the fields below. The content type is application/json.
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/RegisterUserRequest"
+              $ref: "#/components/schemas/QuestionRequest"
       responses:
         "201":
-          description: The User is registered.
+          description: The Question is created.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/User"
+                $ref: "#/components/schemas/Question"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "422":
+          $ref: "#/components/responses/UnprocessableContent"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    get:
+      tags: [questions]
+      operationId: listQuestions
+      summary: List the Questions
+      description: Gives all Questions in the Question bank, newest first. There is no pagination.
+      responses:
+        "200":
+          description: The Questions.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Question"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /admin/questions/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: The ID of the Question, a UUID.
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [questions]
+      operationId: getQuestion
+      summary: Get a Question
+      responses:
+        "200":
+          description: The Question.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Question"
+        "400":
+          $ref: "#/components/responses/InvalidParameter"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    put:
+      tags: [questions]
+      operationId: updateQuestion
+      summary: Change a Question
+      description: >-
+        Replaces the text and all Options of the Question. The Options get new IDs.
+        After an Attempt uses the Question, the Question cannot change. The API then returns 409.
+        The request body is one JSON object with only the fields below. The content type is application/json.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuestionRequest"
+      responses:
+        "200":
+          description: The Question after the change.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Question"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
         "413":
@@ -44,69 +208,712 @@ paths:
           $ref: "#/components/responses/UnprocessableContent"
         "500":
           $ref: "#/components/responses/InternalServerError"
-  /users/{id}:
-    get:
-      tags: [users]
-      operationId: getUser
-      summary: Get a User
-      description: >-
-        Gives the User with this ID. The API keeps each User in a cache for 5 minutes.
-        A change to the User in the database can need up to 5 minutes to show here.
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: The ID of the User, a UUID.
-          schema:
-            type: string
-            format: uuid
+    delete:
+      tags: [questions]
+      operationId: deleteQuestion
+      summary: Delete a Question
+      description: An Exam that uses the Question stops the delete.
       responses:
-        "200":
-          description: The User.
+        "204":
+          description: The Question is deleted.
+        "400":
+          $ref: "#/components/responses/InvalidParameter"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /admin/exams:
+    post:
+      tags: [exams]
+      operationId: createExam
+      summary: Create an Exam
+      description: >-
+        Makes an Exam from Questions of the Question bank. The response has the Exam link token.
+        The Exam link is /e/{token} on the address of the web application.
+        The request body is one JSON object with only the fields below. The content type is application/json.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExamRequest"
+      responses:
+        "201":
+          description: The Exam is created.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/User"
+                $ref: "#/components/schemas/Exam"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "422":
+          $ref: "#/components/responses/UnprocessableContent"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    get:
+      tags: [exams]
+      operationId: listExams
+      summary: List the Exams
+      description: Gives all Exams, newest first. There is no pagination.
+      responses:
+        "200":
+          description: The Exams.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ExamSummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /admin/exams/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: The ID of the Exam, a UUID.
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [exams]
+      operationId: getExam
+      summary: Get an Exam
+      responses:
+        "200":
+          description: The Exam.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Exam"
+        "400":
+          $ref: "#/components/responses/InvalidParameter"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    put:
+      tags: [exams]
+      operationId: updateExam
+      summary: Change an Exam
+      description: >-
+        Replaces all fields of the Exam, except the Exam link token.
+        After the first Attempt, only the close time can change. A change of another field returns 409.
+        The request body is one JSON object with only the fields below. The content type is application/json.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExamRequest"
+      responses:
+        "200":
+          description: The Exam after the change.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Exam"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "422":
+          $ref: "#/components/responses/UnprocessableContent"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      tags: [exams]
+      operationId: deleteExam
+      summary: Delete an Exam
+      description: After the first Attempt, the Exam cannot be deleted.
+      responses:
+        "204":
+          description: The Exam is deleted.
+        "400":
+          $ref: "#/components/responses/InvalidParameter"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /admin/exams/{id}/exam-link:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: The ID of the Exam, a UUID.
+        schema:
+          type: string
+          format: uuid
+    post:
+      tags: [exams]
+      operationId: regenerateExamLink
+      summary: Regenerate the Exam link
+      description: Makes a new Exam link token. The old Exam link stops working.
+      responses:
+        "200":
+          description: The Exam with its new Exam link token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Exam"
+        "400":
+          $ref: "#/components/responses/InvalidParameter"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /exam-links/{token}:
+    parameters:
+      - name: token
+        in: path
+        required: true
+        description: The token of the Exam link.
+        schema:
+          type: string
+    get:
+      tags: [attempts]
+      operationId: getExamLink
+      summary: Get the Exam of an Exam link
+      description: Gives the title, the Exam window and the Time limit of the Exam. It does not give the Questions.
+      security: []
+      responses:
+        "200":
+          description: The Exam of the Exam link.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExamLink"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /exam-links/{token}/attempts:
+    parameters:
+      - name: token
+        in: path
+        required: true
+        description: The token of the Exam link.
+        schema:
+          type: string
+    post:
+      tags: [attempts]
+      operationId: startAttempt
+      summary: Start or resume an Attempt
+      description: >-
+        Starts an Attempt for a Candidate. The API removes the spaces around the name and the email address,
+        and changes the email address to lowercase.
+        An email address with an open Attempt gets that Attempt with status 200, in the Exam window or after it.
+        An email address with a submitted or timed-out Attempt gets 409, and the API gives no Score.
+        A new Attempt needs the Exam window: before it, the API returns 409 with "not open yet", and after it, 409 with "closed".
+        The request body is one JSON object with only the fields below. The content type is application/json.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartAttemptRequest"
+      responses:
+        "200":
+          description: The open Attempt of this email address.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Attempt"
+        "201":
+          description: The new Attempt.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Attempt"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "422":
+          $ref: "#/components/responses/UnprocessableContent"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /attempts/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: The ID of the Attempt, a UUID. It is a secret of the Candidate.
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [attempts]
+      operationId: getAttempt
+      summary: Get an Attempt
+      description: >-
+        Gives an open Attempt with its Questions and its saved Answers.
+        For a submitted or timed-out Attempt, it gives only the status.
+      security: []
+      responses:
+        "200":
+          description: The Attempt.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Attempt"
         "400":
           $ref: "#/components/responses/InvalidParameter"
         "404":
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalServerError"
+  /attempts/{id}/answers/{questionId}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: The ID of the Attempt, a UUID. It is a secret of the Candidate.
+        schema:
+          type: string
+          format: uuid
+      - name: questionId
+        in: path
+        required: true
+        description: The ID of a Question of the Exam, a UUID.
+        schema:
+          type: string
+          format: uuid
+    put:
+      tags: [attempts]
+      operationId: saveAnswer
+      summary: Save an Answer
+      description: >-
+        Saves the Option that the Candidate selected for the Question. A second call for the same Question replaces the Answer.
+        After the Time limit ends, or after the Candidate submits, the API returns 409.
+        The request body is one JSON object with only the fields below. The content type is application/json.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveAnswerRequest"
+      responses:
+        "204":
+          description: The Answer is saved.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "422":
+          $ref: "#/components/responses/UnprocessableContent"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /attempts/{id}/submission:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: The ID of the Attempt, a UUID. It is a secret of the Candidate.
+        schema:
+          type: string
+          format: uuid
+    post:
+      tags: [attempts]
+      operationId: submitAttempt
+      summary: Submit an Attempt
+      description: >-
+        Ends the Attempt and gives the Score. A Question with no Answer counts 0 points.
+        The call also works after the Time limit ends, because the Answers cannot change after that time.
+        The Attempt then has the status "timed_out". A second call returns 409.
+      security: []
+      responses:
+        "200":
+          description: The Score of the Attempt.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Score"
+        "400":
+          $ref: "#/components/responses/InvalidParameter"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /admin/exams/{id}/attempts:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: The ID of the Exam, a UUID.
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [exams]
+      operationId: listExamAttempts
+      summary: List the Attempts of an Exam
+      description: >-
+        Gives one row for each Attempt, in the order of the start time. There is no pagination.
+        The rows have no Attempt ID, because the Attempt ID is the secret of the Candidate.
+      responses:
+        "200":
+          description: The Attempts of the Exam.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AttemptResult"
+        "400":
+          $ref: "#/components/responses/InvalidParameter"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+security:
+  - sessionCookie: []
 components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
+      description: The session of an Admin. A login sets this cookie.
   schemas:
-    RegisterUserRequest:
+    LoginRequest:
       type: object
-      required: [emailAddress, displayName]
+      required: [emailAddress, password]
       properties:
         emailAddress:
           type: string
-          description: >-
-            The email address of the User, for example name@example.com.
-            It has only ASCII characters, and the maximum length is 254 characters.
-          examples: [ann@example.com]
-        displayName:
+          description: The email address of the Admin.
+          examples: [admin@example.com]
+        password:
           type: string
-          description: The name that the application shows for the User. The maximum length is 100 characters.
-          examples: [Ann]
-    User:
+          description: The password of the Admin.
+    OptionRequest:
       type: object
-      required: [id, emailAddress, displayName, createdAt]
+      required: [text, correct]
+      properties:
+        text:
+          type: string
+          description: The text of the Option, plain text of 1 to 500 characters.
+        correct:
+          type: boolean
+          description: True for the one correct Option of the Question.
+    QuestionRequest:
+      type: object
+      required: [text, options]
+      properties:
+        text:
+          type: string
+          description: The text of the Question, plain text of 1 to 2000 characters.
+        options:
+          type: array
+          description: The Options in the order that the Question shows them. A Question has 2 to 6 Options.
+          items:
+            $ref: "#/components/schemas/OptionRequest"
+    Option:
+      type: object
+      required: [id, text, correct]
       properties:
         id:
           type: string
           format: uuid
-          description: The ID of the User. It is a UUID of version 7.
-        emailAddress:
+          description: The ID of the Option. It is a UUID of version 7.
+        text:
           type: string
-          description: The email address of the User, in lowercase.
-        displayName:
+        correct:
+          type: boolean
+    Question:
+      type: object
+      required: [id, text, options, createdAt]
+      properties:
+        id:
           type: string
-          description: The name that the application shows for the User.
+          format: uuid
+          description: The ID of the Question. It is a UUID of version 7.
+        text:
+          type: string
+        options:
+          type: array
+          description: The Options in the order that the Question shows them.
+          items:
+            $ref: "#/components/schemas/Option"
         createdAt:
           type: string
           format: date-time
-          description: The time of the Registration, in UTC.
+          description: The time that the Admin created the Question, in UTC.
+    ExamRequest:
+      type: object
+      required: [title, questionIds, opensAt, closesAt, timeLimitMinutes]
+      properties:
+        title:
+          type: string
+          description: The title of the Exam, plain text of 1 to 200 characters.
+        questionIds:
+          type: array
+          description: The IDs of the Questions in the order that the Exam shows them. An Exam has 1 to 200 different Questions.
+          items:
+            type: string
+            format: uuid
+        opensAt:
+          type: string
+          format: date-time
+          description: The open time of the Exam window. A Candidate cannot start an Attempt before it.
+        closesAt:
+          type: string
+          format: date-time
+          description: The close time of the Exam window. It is after the open time.
+        timeLimitMinutes:
+          type: integer
+          description: The number of minutes that a Candidate has to finish an Attempt, from 1 to 480.
+    Exam:
+      type: object
+      required: [id, title, questionIds, opensAt, closesAt, timeLimitMinutes, linkToken, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: The ID of the Exam. It is a UUID of version 7.
+        title:
+          type: string
+        questionIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        opensAt:
+          type: string
+          format: date-time
+          description: The open time of the Exam window, in UTC.
+        closesAt:
+          type: string
+          format: date-time
+          description: The close time of the Exam window, in UTC.
+        timeLimitMinutes:
+          type: integer
+        linkToken:
+          type: string
+          description: The token in the Exam link. It has 22 random letters and digits.
+        createdAt:
+          type: string
+          format: date-time
+          description: The time that the Admin created the Exam, in UTC.
+    ExamSummary:
+      type: object
+      required: [id, title, opensAt, closesAt, timeLimitMinutes, questionCount, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        opensAt:
+          type: string
+          format: date-time
+        closesAt:
+          type: string
+          format: date-time
+        timeLimitMinutes:
+          type: integer
+        questionCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+    ExamLink:
+      type: object
+      required: [title, opensAt, closesAt, timeLimitMinutes, questionCount]
+      properties:
+        title:
+          type: string
+        opensAt:
+          type: string
+          format: date-time
+          description: The open time of the Exam window, in UTC.
+        closesAt:
+          type: string
+          format: date-time
+          description: The close time of the Exam window, in UTC.
+        timeLimitMinutes:
+          type: integer
+        questionCount:
+          type: integer
+    StartAttemptRequest:
+      type: object
+      required: [name, emailAddress]
+      properties:
+        name:
+          type: string
+          description: The name of the Candidate, plain text of 1 to 100 characters.
+        emailAddress:
+          type: string
+          description: The email address of the Candidate. It has up to 254 characters.
+    CandidateOption:
+      type: object
+      required: [id, text]
+      properties:
+        id:
+          type: string
+          format: uuid
+        text:
+          type: string
+    CandidateQuestion:
+      type: object
+      description: A Question as a Candidate sees it. It does not say which Option is correct.
+      required: [id, text, options]
+      properties:
+        id:
+          type: string
+          format: uuid
+        text:
+          type: string
+        options:
+          type: array
+          items:
+            $ref: "#/components/schemas/CandidateOption"
+    Answer:
+      type: object
+      required: [questionId, optionId]
+      properties:
+        questionId:
+          type: string
+          format: uuid
+        optionId:
+          type: string
+          format: uuid
+    Attempt:
+      type: object
+      description: >-
+        An Attempt. An open Attempt has all fields. A submitted or timed-out Attempt has only id and status.
+      required: [id, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: The ID of the Attempt. It is a random UUID, and it is the secret of the Candidate.
+        status:
+          type: string
+          enum: [open, submitted, timed_out]
+        examTitle:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+          description: The time that the Time limit ends, in UTC.
+        questions:
+          type: array
+          description: The Questions in the order that the Exam shows them.
+          items:
+            $ref: "#/components/schemas/CandidateQuestion"
+        answers:
+          type: array
+          description: The Answers that the API saved.
+          items:
+            $ref: "#/components/schemas/Answer"
+    SaveAnswerRequest:
+      type: object
+      required: [optionId]
+      properties:
+        optionId:
+          type: string
+          format: uuid
+          description: The ID of an Option of the Question.
+    Score:
+      type: object
+      required: [correct, total]
+      properties:
+        correct:
+          type: integer
+          description: The number of Questions that the Candidate answered with the correct Option. Each one is 1 point.
+        total:
+          type: integer
+          description: The number of Questions in the Exam.
+    AttemptResult:
+      type: object
+      required: [name, emailAddress, status, score, startedAt, finishedAt]
+      properties:
+        name:
+          type: string
+          description: The name of the Candidate.
+        emailAddress:
+          type: string
+          description: The email address of the Candidate, in lowercase.
+        status:
+          type: string
+          enum: [open, submitted, timed_out]
+        score:
+          description: >-
+            The Score of the Attempt. It counts the saved Answers. It is null while the Attempt is open.
+          oneOf:
+            - $ref: "#/components/schemas/Score"
+            - type: "null"
+        startedAt:
+          type: string
+          format: date-time
+          description: The time that the Candidate started the Attempt, in UTC.
+        finishedAt:
+          description: >-
+            The submit time, in UTC. For a timed-out Attempt that the Candidate did not submit, it is the time that the
+            Time limit ended. It is null while the Attempt is open.
+          oneOf:
+            - type: string
+              format: date-time
+            - type: "null"
+    Admin:
+      type: object
+      required: [id, emailAddress]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: The ID of the Admin. It is a UUID of version 7.
+        emailAddress:
+          type: string
+          description: The email address of the Admin, in lowercase.
     Problem:
       type: object
       description: A problem detail, as RFC 9457 defines it.
@@ -125,6 +932,12 @@ components:
           type: string
           description: The problem, and what the client must do to correct it.
   responses:
+    Unauthorized:
+      description: There is no session, the session is not valid, or the email address or the password is not correct.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
     InvalidParameter:
       description: A value in the address of the request is not valid, for example an ID that is not a UUID.
       content:
@@ -144,7 +957,7 @@ components:
           schema:
             $ref: "#/components/schemas/Problem"
     Conflict:
-      description: The request conflicts with the data of the application, for example an email address that is already registered.
+      description: The request conflicts with the data of the application, for example a Question that an Exam uses.
       content:
         application/problem+json:
           schema:
@@ -162,7 +975,7 @@ components:
           schema:
             $ref: "#/components/schemas/Problem"
     UnprocessableContent:
-      description: A rule of the application rejects the request, for example an email address that is not valid.
+      description: A rule of the application rejects the request, for example a value that is too long.
       content:
         application/problem+json:
           schema:
